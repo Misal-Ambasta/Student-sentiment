@@ -264,11 +264,11 @@ Vector embeddings → ChromaDB storage → WebSocket notifications
 ```mermaid
 flowchart TD
     A[File Upload] --> B[Celery Task Queue]
-    B --> C[process_file()]
+    B --> C[Process File]
     C --> D{File Type?}
     
-    D -->|Survey| E[process_survey_file()]
-    D -->|Demographics| F[process_demographics_file()]
+    D -->|Survey| E[Process Survey File]
+    D -->|Demographics| F[Process Demographics File]
     
     E --> G[Header Mapping with LLM]
     F --> H[Data Validation]
