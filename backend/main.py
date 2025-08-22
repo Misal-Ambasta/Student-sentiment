@@ -15,7 +15,7 @@ load_dotenv()
 from database import init_db, get_db
 from vector_store import get_chroma_manager
 from llm_integration import get_llm_manager
-from routers import upload, chat, websocket
+from routers import upload, chat, websocket, database
 
 # Configure logging
 logger.add(
@@ -79,6 +79,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 app.include_router(websocket.router, prefix="/api/ws", tags=["websocket"])
+app.include_router(database.router, tags=["database"])
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="static"), name="static")

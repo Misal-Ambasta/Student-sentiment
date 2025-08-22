@@ -30,7 +30,7 @@ import { DotsSpinner } from '../components/UI/Spinner';
 import { useChatStore } from '../stores/useChatStore';
 import { useAppStore } from '../stores/useAppStore';
 import { getQuerySuggestions, sendChatMessage, classifyQuery } from '../lib/api';
-import { formatChatTime, cn } from '../lib/utils';
+import { formatChatTime, cn, formatDate } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 const Chat: React.FC = () => {
@@ -224,6 +224,11 @@ const Chat: React.FC = () => {
     };
 
     const formatContent = (content: string) => {
+      // Check if this is an NPS Intelligence Report
+      if (content.includes('NPS Intelligence Report')) {
+        return formatNPSReport(content);
+      }
+      
       // Split content by sections and format
       const sections = content.split('\n\n');
       return sections.map((section, index) => {
@@ -267,6 +272,90 @@ const Chat: React.FC = () => {
       });
     };
 
+    const formatNPSReport = (content: string) => {
+      const lines = content.split('\n');
+      const formattedSections = [];
+      let currentSection = [];
+      let sectionType = 'default';
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        
+        if (line.includes('NPS Intelligence Report')) {
+          // Main header
+          formattedSections.push(
+            <div key={`header-${i}`} className="mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                📊 {line.replace(/[📊═]/g, '').trim()}
+              </h2>
+            </div>
+          );
+        } else if (line.includes('OVERALL METRICS')) {
+          // Metrics section header
+          formattedSections.push(
+            <div key={`metrics-header-${i}`} className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 pb-2">
+                📈 OVERALL METRICS
+              </h3>
+            </div>
+          );
+        } else if (line.includes('Current NPS:')) {
+          // NPS score line with proper formatting
+          const npsMatch = line.match(/Current NPS:\s*(\d+)\s*\(([^)]+)\)\s*(.*)?/);
+          if (npsMatch) {
+            const [, score, change, indicator] = npsMatch;
+            formattedSections.push(
+              <div key={`nps-${i}`} className="mb-3">
+                <div className="flex items-center gap-2 text-lg">
+                  <span className="font-semibold text-gray-900 dark:text-white">Current NPS:</span>
+                  <span className="font-bold text-2xl text-blue-600 dark:text-blue-400">{score}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">({change})</span>
+                  {indicator && <span className="text-yellow-500">{indicator}</span>}
+                </div>
+              </div>
+            );
+          }
+        } else if (line.includes('Promoters:') && line.includes('Passives:') && line.includes('Detractors:')) {
+          // NPS breakdown line
+          formattedSections.push(
+            <div key={`breakdown-${i}`} className="mb-3">
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                {line.split('|').map((segment, idx) => {
+                  const trimmed = segment.trim();
+                  const [label, value] = trimmed.split(':');
+                  const colorClass = idx === 0 ? 'text-green-600 dark:text-green-400' : 
+                                   idx === 1 ? 'text-yellow-600 dark:text-yellow-400' : 
+                                   'text-red-600 dark:text-red-400';
+                  return (
+                    <div key={idx} className="text-center">
+                      <div className={`font-semibold ${colorClass}`}>{label}:</div>
+                      <div className="text-gray-700 dark:text-gray-300">{value}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        } else if (line.includes('Response Rate:') || line.includes('Data Richness:')) {
+          // Additional metrics
+          formattedSections.push(
+            <div key={`metric-${i}`} className="mb-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300">{line}</p>
+            </div>
+          );
+        } else if (line && !line.includes('═')) {
+          // Other content lines
+          formattedSections.push(
+            <div key={`content-${i}`} className="mb-2">
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{line}</p>
+            </div>
+          );
+        }
+      }
+
+      return formattedSections;
+    };
+
     return (
       <Card className="w-full max-w-4xl">
         <CardContent className="p-6">
@@ -282,7 +371,7 @@ const Chat: React.FC = () => {
               {data.metadata?.generated_at && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-1">
                   <Clock className="w-3 h-3" />
-                  Generated: {new Date(data.metadata.generated_at).toLocaleString()}
+                  Generated: {formatDate(data.metadata.generated_at, 'PPP p')}
                 </p>
               )}
             </div>

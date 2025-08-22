@@ -1,6 +1,6 @@
 import os
 from typing import AsyncGenerator, List, Dict, Any
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, Boolean, func, create_engine
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, Boolean, func, create_engine, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, relationship
@@ -81,6 +81,14 @@ class Survey(Base):
     aspect_2_score = Column(Integer)
     aspect_3_score = Column(Integer)
     comments = Column(Text)
+    
+    # Additional rich data from 24-column survey (JSONB columns)
+    course_a_scores = Column(JSON)  # All 5 Course A aspect scores
+    course_b_scores = Column(JSON)  # All 5 Course B aspect scores
+    csbt_scores = Column(JSON)      # All 3 CSBT aspect scores
+    dost_support_scores = Column(JSON)  # Dost support scores
+    product_support_scores = Column(JSON)  # All 5 product support scores
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

@@ -151,21 +151,30 @@ class MultiLLMManager:
             Context: {context}
             Question: {question}
             
+            IMPORTANT: When analyzing course performance, use the detailed JSONB course scores if available:
+            - Course A detailed scores: lecture_experience, instructor_delivery, sherpa_support, ask_learn_effectiveness, pp_session
+            - Course B detailed scores: lecture_experience, instructor_delivery, sherpa_support, ask_learn_effectiveness, pp_session  
+            - CSBT detailed scores: curriculum_design, instructor_support, general_support
+            - Support scores: dost_support, lms_platform, assess_platform, ticketing_system, psc_sessions, pai_evaluation
+            
+            If detailed scores are available, calculate averages and show specific aspect breakdowns.
+            If only simplified aspect_1_score, aspect_2_score, aspect_3_score are available, use those with appropriate labels.
+            
             Return ONLY a valid JSON object in this exact format:
-            {
+            {{
               "type": "individual_analysis",
-              "content": "👤 STUDENT PROFILE: [student_id]\nDemographic: [demographic] | Grade: [grade] | Attendance: [attendance]%\n\nJourney Overview:\n• Overall NPS: [score]/10 → '[comment]'\n• Course A Performance: [analysis]\n• Course B Performance: [analysis]\n• CSBT Readiness: [analysis]\n• Support Systems: [analysis]\n\n📊 DETAILED ASPECT BREAKDOWN:\nCourse A: [detailed scores]\nCourse B: [detailed scores]\nCSBT: [detailed scores]\nSupport: [detailed scores]\n\n🧠 HISTORICAL COMPARISON:\nFound [number] similar [demographic] patterns:\n• [success rate]% successfully complete program\n• [placement rate]% achieve job placement within 3 months\n• Typical challenge: [challenge]\n• Risk Level: [level] ([dropout probability]% dropout probability)\n\n💡 RECOMMENDED ACTIONS:\n• [action 1]\n• [action 2]\n• [action 3]\n• [action 4]",
+              "content": "👤 STUDENT PROFILE: [student_id]\nDemographic: [demographic] | Grade: [grade] | Attendance: [attendance]%\n\nJourney Overview:\n• Overall NPS: [score]/10 → '[comment]'\n• Course A Performance: [analysis with detailed breakdown if available]\n• Course B Performance: [analysis with detailed breakdown if available]\n• CSBT Readiness: [analysis with detailed breakdown if available]\n• Support Systems: [analysis with detailed breakdown if available]\n\n📊 DETAILED ASPECT BREAKDOWN:\nCourse A: Aspect 1: [score], Aspect 2: [score], Aspect 3: [score], Aspect 4: [score], Aspect 5: [score]\nCourse B: Aspect 1: [score], Aspect 2: [score], Aspect 3: [score], Aspect 4: [score], Aspect 5: [score]\nCSBT: Aspect 1: [score], Aspect 2: [score], Aspect 3: [score]\nSupport: [detailed support scores if available]\n\n🧠 HISTORICAL COMPARISON:\nFound [number] similar [demographic] patterns:\n• [success rate]% successfully complete program\n• [placement rate]% achieve job placement within 3 months\n• Typical challenge: [challenge]\n• Risk Level: [level] ([dropout probability]% dropout probability)\n\n💡 RECOMMENDED ACTIONS:\n• [action 1]\n• [action 2]\n• [action 3]\n• [action 4]",
               "student_id": "[extracted_student_id]",
               "risk_level": "[very_low|low|medium|high|very_high]",
-              "aspect_scores": {},
+              "aspect_scores": {{}},
               "recommended_actions": [],
-              "metadata": {
-                "confidence_score": "{confidence_score}",
+              "metadata": {{
+                "confidence_score": "{{confidence_score}}",
                 "data_sources": ["student_survey", "historical_patterns", "demographic_analysis"],
                 "analysis_depth": "comprehensive",
                 "generated_at": "[timestamp]"
-              }
-            }
+              }}
+            }}
             """
             
             self.rag_templates["individual_analysis"] = PromptTemplate(
@@ -181,17 +190,17 @@ class MultiLLMManager:
             Question: {question}
             
             Return ONLY a valid JSON object in this exact format:
-            {
+            {{
               "type": "weekly_report",
               "content": "📊 NPS Intelligence Report - Week Ending [Date]\n════════════════════════════════════════════\n📈 OVERALL METRICS\nCurrent NPS: [score] (↓[change] from last week) ⚠\nPromoters: [%]% | Passives: [%]% | Detractors: [%]%\nResponse Rate: [%]%\nData Richness: 20+ aspects analyzed per student\n\n🧠 INSIGHTS FROM PAST COHORTS\nThis Week [number] dip happened in [%]% of previous batches\n• Course A→B transition challenges: [%]% of students affected\n• CSBT readiness concerns: [%]% mention career preparation anxiety\n• Teams that acted now: [%]% recovered\n• Teams that waited: Only [%]% recovered\n• What worked best: [interventions]\n\n📚 ASPECT-SPECIFIC ANALYSIS\nCourse A Performance:\n• Lecture Experience: [score]/10 (↑[change])\n• Instructor Delivery: [score]/10 (stable)\n• Sherpa Support: [score]/10 (↓[change]) ⚠\n\nCourse B Performance:\n• Lecture Experience: [score]/10 (↓[change]) ⚠\n• Content Complexity Jump: [%]% mention difficulty\n• Historical Pattern: Normal Week [range] challenge\n\nCSBT Readiness:\n• Curriculum Design: [score]/10 (↑[change])\n• Career Preparation Anxiety: [%]% express concerns\n• Job Market Readiness: [%]% feel underprepared\n\n...[continue with full analysis]",
-              "metadata": {
-                "confidence_score": "{confidence_score}",
+              "metadata": {{
+                "confidence_score": "{{confidence_score}}",
                 "data_sources": ["comprehensive_survey", "historical_cohorts", "aspect_analysis"],
                 "aspects_analyzed": 20,
                 "response_richness": "high",
                 "generated_at": "[timestamp]"
-              }
-            }
+              }}
+            }}
             """
             
             self.rag_templates["weekly_report"] = PromptTemplate(
@@ -206,25 +215,31 @@ class MultiLLMManager:
             Context: {context}
             Question: {question}
             
-            IMPORTANT: When calculating course averages, use the following approach:
-            - Course A Average: Calculate from all Course A related ratings (columns 5-9 in survey data: Lecture experience, Instructor content delivery, Sherpa Support, Ask & Learn Hour effectiveness, PP session)
-            - Course B Average: Calculate from all Course B related ratings (columns 10-14 in survey data: Lecture Experience, Instructor content delivery, Course B Sherpa Support, Ask & Learn Hour effectiveness, PP Session)
-            - CSBT Average: Calculate from all CSBT related ratings (columns 15-17 in survey data: CSBT Curriculum design, CSBT Instructor support, CSBT Support)
+            IMPORTANT: When calculating course averages, prioritize detailed JSONB course scores if available:
+            - Course A Average: Use course_a_scores JSONB data (lecture_experience, instructor_delivery, sherpa_support, ask_learn_effectiveness, pp_session)
+            - Course B Average: Use course_b_scores JSONB data (lecture_experience, instructor_delivery, sherpa_support, ask_learn_effectiveness, pp_session)
+            - CSBT Average: Use csbt_scores JSONB data (curriculum_design, instructor_support, general_support)
+            - Support Systems: Use dost_support_scores and product_support_scores JSONB data
+            
+            If detailed JSONB scores are not available, fallback to simplified aspect scores:
+            - Course A Average: Calculate from aspect_1_score (Course A Lecture experience)
+            - Course B Average: Calculate from aspect_2_score (Course B Lecture experience)
+            - CSBT Average: Calculate from aspect_3_score (CSBT Curriculum design)
             
             If any course section has no data or all values are empty/null, display "N/A" for that course average.
             
             Return ONLY a valid JSON object in this exact format:
-            {
+            {{
               "type": "segmentation_analysis",
               "content": "📊 COMPREHENSIVE DEMOGRAPHIC ANALYSIS\n\nWorking Professionals (n=[count] in sample)\n• Average Overall NPS: [score]\n• Course A Average: [score]/5 ([description])\n• Course B Average: [score]/5 ([description])\n• CSBT Average: [score]/5 ([description])\n• Main Challenge: [challenge] (mentioned in [%]% of feedback)\n• Support Needs: [needs]\n• Historical Success Rate: [%]% with targeted interventions\n\nFresh Graduates (n=[count] in sample)\n• Average Overall NPS: [score] ([description])\n• Course A Average: [score]/5 ([description])\n• Course B Average: [score]/5 ([description])\n• CSBT Average: [score]/5 ([description])\n• Strength: [strengths]\n• Challenge: [challenges]\n• Historical Success Rate: [%]% completion, [%]% placement\n\nCareer Switchers (n=[count] in sample)\n• Average Overall NPS: [score]\n• Course A Average: [score]/5 ([description])\n• Course B Average: [score]/5 ([description])\n• CSBT Average: [score]/5 ([description])\n• Main Need: [needs]\n• Support Focus: [focus]\n• Historical Success Rate: [%]% with mentorship support\n\n🎯 TARGETED RECOMMENDATIONS:\nWorking Professionals: [recommendations]\nFresh Graduates: [recommendations]\nCareer Switchers: [recommendations]",
-              "segments": {},
-              "metadata": {
-                "confidence_score": "{confidence_score}",
+              "segments": {{}},
+              "metadata": {{
+                "confidence_score": "{{confidence_score}}",
                 "data_sources": ["demographic_survey", "segmentation_analysis", "historical_cohorts"],
                 "segments_analyzed": 3,
                 "generated_at": "[timestamp]"
-              }
-            }
+              }}
+            }}
             """
             
             self.rag_templates["segmentation_analysis"] = PromptTemplate(
@@ -302,16 +317,26 @@ class MultiLLMManager:
             # Format documents into context string
             context = "\n\n".join([doc.page_content for doc in documents])
             
-            # Calculate confidence score for templates that need it
+            # Calculate confidence score and replace timestamp for templates that need it
             template_str = template.template
-            if "{confidence_score}" in template_str:
+            if "{{confidence_score}}" in template_str:
                 confidence_calc = get_confidence_calculator()
                 confidence_score = confidence_calc.calculate_confidence(
                     documents=documents,
                     question=question,
                     analysis_type=template_type
                 )
-                template_str = template_str.replace("{confidence_score}", str(confidence_score))
+                # Replace the placeholder with the actual confidence score
+                template_str = template_str.replace("{{confidence_score}}", str(confidence_score))
+            
+            # Replace timestamp placeholder with current timestamp
+            if "[timestamp]" in template_str:
+                from datetime import datetime
+                current_timestamp = datetime.now().isoformat()
+                template_str = template_str.replace("[timestamp]", current_timestamp)
+            
+            # Update template if any replacements were made
+            if "{{confidence_score}}" in template.template or "[timestamp]" in template.template:
                 template = PromptTemplate(
                     template=template_str,
                     input_variables=template.input_variables
@@ -347,6 +372,12 @@ class MultiLLMManager:
                             if "{confidence_score}" in template_str and "metadata" in parsed_response:
                                 parsed_response["metadata"]["confidence_score"] = confidence_score
                             
+                            # Replace any hardcoded timestamps with current timestamp
+                            if "metadata" in parsed_response and "generated_at" in parsed_response["metadata"]:
+                                from datetime import datetime
+                                current_timestamp = datetime.now().isoformat()
+                                parsed_response["metadata"]["generated_at"] = current_timestamp
+                            
                             return json.dumps(parsed_response)
                         else:
                             logger.warning(f"No valid JSON found in {template_type} response")
@@ -377,6 +408,12 @@ class MultiLLMManager:
                             # Ensure confidence score is properly set for templates that need it
                             if "{confidence_score}" in template_str and "metadata" in parsed_response:
                                 parsed_response["metadata"]["confidence_score"] = confidence_score
+                            
+                            # Replace any hardcoded timestamps with current timestamp
+                            if "metadata" in parsed_response and "generated_at" in parsed_response["metadata"]:
+                                from datetime import datetime
+                                current_timestamp = datetime.now().isoformat()
+                                parsed_response["metadata"]["generated_at"] = current_timestamp
                             
                             return json.dumps(parsed_response)
                         else:

@@ -69,7 +69,7 @@ The Groq API header detection must be enhanced to:
    - If column 24 has content: "Additional feedback: [column 24 content]"  
    - If both: combine with separator
    - If neither: "No additional feedback provided"
-
+- aspects signify what aspect did the student score: for instance one aspect can be “How Easy was LMS”, another can be “How well did the Instructor of ML teach”, etc and scores signify the score given in that aspect/attribute on a range of 1 to 5
 ### Enhanced Data Processing Pipeline:
 
 1. **VALIDATE FILE STRUCTURE:**

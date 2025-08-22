@@ -7,6 +7,15 @@ from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from loguru import logger
 
+def safe_int_convert(value):
+    """Safely convert value to integer, return 0 if conversion fails"""
+    try:
+        if pd.isna(value) or value == '' or value is None:
+            return 0
+        return int(float(value))
+    except (ValueError, TypeError):
+        return 0
+
 # Import managers
 from database import get_db, engine, Base
 from vector_store import get_chroma_manager
@@ -363,6 +372,54 @@ def transform_survey_data(df: pd.DataFrame, header_mapping: Dict[str, str]) -> L
                     # Field not found
                     item[target_field] = "unknown" if target_field in ["student_id", "course_id"] else 0
         
+        # Extract detailed course scores from 24-column format
+        if len(df.columns) >= 24:
+            # Course A scores (columns 5-9): Lecture, Instructor, Sherpa, Ask&Learn, PP
+            course_a_scores = {
+                "lecture_experience": safe_int_convert(row.iloc[4]) if len(row) > 4 else 0,
+                "instructor_delivery": safe_int_convert(row.iloc[5]) if len(row) > 5 else 0,
+                "sherpa_support": safe_int_convert(row.iloc[6]) if len(row) > 6 else 0,
+                "ask_learn_effectiveness": safe_int_convert(row.iloc[7]) if len(row) > 7 else 0,
+                "pp_session": safe_int_convert(row.iloc[8]) if len(row) > 8 else 0
+            }
+            
+            # Course B scores (columns 10-14): Same aspects for Course B
+            course_b_scores = {
+                "lecture_experience": safe_int_convert(row.iloc[9]) if len(row) > 9 else 0,
+                "instructor_delivery": safe_int_convert(row.iloc[10]) if len(row) > 10 else 0,
+                "sherpa_support": safe_int_convert(row.iloc[11]) if len(row) > 11 else 0,
+                "ask_learn_effectiveness": safe_int_convert(row.iloc[12]) if len(row) > 12 else 0,
+                "pp_session": safe_int_convert(row.iloc[13]) if len(row) > 13 else 0
+            }
+            
+            # CSBT scores (columns 15-17): Curriculum, Instructor, Support
+            csbt_scores = {
+                "curriculum_design": safe_int_convert(row.iloc[14]) if len(row) > 14 else 0,
+                "instructor_support": safe_int_convert(row.iloc[15]) if len(row) > 15 else 0,
+                "general_support": safe_int_convert(row.iloc[16]) if len(row) > 16 else 0
+            }
+            
+            # Dost support (column 18)
+            dost_support_scores = {
+                "dost_support": safe_int_convert(row.iloc[17]) if len(row) > 17 else 0
+            }
+            
+            # Product support scores (columns 19-23): LMS, Assess, Ticketing, PSC, PAI
+            product_support_scores = {
+                "lms_platform": safe_int_convert(row.iloc[18]) if len(row) > 18 else 0,
+                "assess_platform": safe_int_convert(row.iloc[19]) if len(row) > 19 else 0,
+                "ticketing_system": safe_int_convert(row.iloc[20]) if len(row) > 20 else 0,
+                "psc_sessions": safe_int_convert(row.iloc[21]) if len(row) > 21 else 0,
+                "pai_evaluation": safe_int_convert(row.iloc[22]) if len(row) > 22 else 0
+            }
+            
+            # Add JSONB data to item
+            item["course_a_scores"] = course_a_scores
+            item["course_b_scores"] = course_b_scores
+            item["csbt_scores"] = csbt_scores
+            item["dost_support_scores"] = dost_support_scores
+            item["product_support_scores"] = product_support_scores
+        
         # Handle comments field specially
         if "comments" not in item or not item["comments"]:
             # Try to combine improvement feedback and additional feedback
@@ -459,10 +516,14 @@ def save_survey_data(data: List[Dict[str, Any]]):
             insert_survey = text(
                 "INSERT INTO surveys "
                 "(student_id, timestamp, nps_score, course_id, week_number, "
-                "aspect_1_score, aspect_2_score, aspect_3_score, comments, created_at, updated_at) "
+                "aspect_1_score, aspect_2_score, aspect_3_score, comments, "
+                "course_a_scores, course_b_scores, csbt_scores, dost_support_scores, product_support_scores, "
+                "created_at, updated_at) "
                 "VALUES "
                 "(:student_id, :timestamp, :nps_score, :course_id, :week_number, "
-                ":aspect_1_score, :aspect_2_score, :aspect_3_score, :comments, :created_at, :updated_at)"
+                ":aspect_1_score, :aspect_2_score, :aspect_3_score, :comments, "
+                ":course_a_scores, :course_b_scores, :csbt_scores, :dost_support_scores, :product_support_scores, "
+                ":created_at, :updated_at)"
             )
             db.execute(insert_survey, {
                 "student_id": item['student_id'],
@@ -474,6 +535,11 @@ def save_survey_data(data: List[Dict[str, Any]]):
                 "aspect_2_score": item['aspect_2_score'],
                 "aspect_3_score": item['aspect_3_score'],
                 "comments": item['comments'],
+                "course_a_scores": json.dumps(item.get('course_a_scores', {})),
+                "course_b_scores": json.dumps(item.get('course_b_scores', {})),
+                "csbt_scores": json.dumps(item.get('csbt_scores', {})),
+                "dost_support_scores": json.dumps(item.get('dost_support_scores', {})),
+                "product_support_scores": json.dumps(item.get('product_support_scores', {})),
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
             })
