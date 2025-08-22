@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Add the backend directory to Python path
-sys.path.append(str(Path(__file__).parent))
+sys.path.append(str(Path(__file__).parent.parent))
 
 from celery_tasks.data_processing import process_survey_file, process_demographics_file, get_sync_db
 from sqlalchemy import text, create_engine
@@ -31,7 +31,7 @@ async def load_sample_data():
     """Load sample data files into the system"""
     try:
         # Paths to sample data files
-        sample_dir = Path(__file__).parent.parent / "sample_data_10"
+        sample_dir = Path(__file__).parent.parent.parent / "sample_data_10"
         survey_file = sample_dir / "nps_sample_10.csv"
         demographics_file = sample_dir / "demographics_sample_10.csv"
         

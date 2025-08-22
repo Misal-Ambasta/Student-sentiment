@@ -5,6 +5,10 @@ from loguru import logger
 from langchain_community.vectorstores import Chroma
 from langchain.schema import Document
 from langchain.embeddings.base import Embeddings
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Get ChromaDB URL from environment variable
 CHROMA_URL = os.getenv("CHROMA_URL", "http://localhost:8000")
@@ -31,59 +35,117 @@ class MultiModelEmbeddings(Embeddings):
     
     def _initialize_models(self):
         """Initialize embedding models with fallback strategy"""
+        # Initialize primary model (Gemini - 768 dimensions)
         try:
-            # Try primary model: Google's Gemini embedding
             from langchain_google_genai import GoogleGenerativeAIEmbeddings
             self.primary_model = GoogleGenerativeAIEmbeddings(
                 model="models/gemini-embedding-001",
-                google_api_key=os.getenv("GOOGLE_API_KEY", "")
+                google_api_key=os.getenv("GOOGLE_API_KEY"),
+                output_dimensionality=768
             )
-            self.current_model = "models/gemini-embedding-001"
+            logger.info("Initialized Gemini embeddings as primary model")
         except Exception as e:
             logger.warning(f"Failed to initialize Gemini embeddings: {e}")
+            self.primary_model = None
+            
+        # Initialize first fallback: Nomic embeddings
+        nomic_api_key = os.getenv('NOMIC_API_KEY')
+        if nomic_api_key:
             try:
-                # Try first fallback: Nomic embeddings
                 from langchain_nomic import NomicEmbeddings
                 self.fallback_model_1 = NomicEmbeddings(
-                    model_name="nomic-embed-text-v1"
+                    model="nomic-embed-text-v1.5",
+                    nomic_api_key=nomic_api_key,
+                    dimensionality=768
                 )
-                self.current_model = "nomic-embed-text-v1"
+                logger.info("Initialized Nomic embeddings as first fallback")
             except Exception as e:
                 logger.warning(f"Failed to initialize Nomic embeddings: {e}")
-                try:
-                    # Try second fallback: MPNet embeddings
-                    from langchain_community.embeddings import HuggingFaceEmbeddings
-                    self.fallback_model_2 = HuggingFaceEmbeddings(
-                        model_name="sentence-transformers/all-mpnet-base-v2",
-                        model_kwargs={"device": "cpu"},
-                        encode_kwargs={"normalize_embeddings": True}
-                    )
-                    self.current_model = "all-mpnet-base-v2"
-                except Exception as e:
-                    logger.error(f"All embedding models failed to initialize: {e}")
-                    raise ValueError("No embedding models could be initialized")
+                self.fallback_model_1 = None
+        else:
+            logger.warning("NOMIC_API_KEY not found, skipping Nomic embeddings")
+            self.fallback_model_1 = None
+            
+        # Initialize second fallback: HuggingFace model (768 dimensions)
+        try:
+            from langchain_huggingface import HuggingFaceEmbeddings
+            self.fallback_model_2 = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-mpnet-base-v2",
+                model_kwargs={"device": "cpu"},
+                encode_kwargs={"normalize_embeddings": True}
+            )
+            logger.info("Initialized HuggingFace embeddings as second fallback")
+        except Exception as e:
+            logger.warning(f"Failed to initialize HuggingFace embeddings: {e}")
+            self.fallback_model_2 = None
+            
+        # Determine current model
+        if self.primary_model:
+            self.current_model = "models/gemini-embedding-001"
+        elif self.fallback_model_1:
+            self.current_model = "nomic-embed-text-v1.5"
+        elif self.fallback_model_2:
+            self.current_model = "all-mpnet-base-v2"
+        else:
+            raise ValueError("No embedding models could be initialized")
     
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed documents using the available model"""
+        """Embed documents using the available model with runtime fallback"""
+        # Try primary model first (Gemini with 768 dimensions)
         if self.primary_model:
-            return self.primary_model.embed_documents(texts)
-        elif self.fallback_model_1:
-            return self.fallback_model_1.embed_documents(texts)
-        elif self.fallback_model_2:
-            return self.fallback_model_2.embed_documents(texts)
-        else:
-            raise ValueError("No embedding model available")
+            try:
+                # For Gemini, use output_dimensionality parameter
+                if hasattr(self.primary_model, 'model') and 'gemini' in str(self.primary_model.model):
+                    return self.primary_model.embed_documents(texts, output_dimensionality=768)
+                else:
+                    return self.primary_model.embed_documents(texts)
+            except Exception as e:
+                logger.warning(f"Primary embedding model failed: {e}. Trying fallback models...")
+                
+        # Try first fallback
+        if self.fallback_model_1:
+            try:
+                return self.fallback_model_1.embed_documents(texts)
+            except Exception as e:
+                logger.warning(f"First fallback embedding model failed: {e}. Trying second fallback...")
+                
+        # Try second fallback
+        if self.fallback_model_2:
+            try:
+                return self.fallback_model_2.embed_documents(texts)
+            except Exception as e:
+                logger.error(f"Second fallback embedding model failed: {e}")
+                
+        raise ValueError("All embedding models failed")
     
     def embed_query(self, text: str) -> List[float]:
-        """Embed query using the available model"""
+        """Embed query using the available model with runtime fallback"""
+        # Try primary model first (Gemini with 768 dimensions)
         if self.primary_model:
-            return self.primary_model.embed_query(text)
-        elif self.fallback_model_1:
-            return self.fallback_model_1.embed_query(text)
-        elif self.fallback_model_2:
-            return self.fallback_model_2.embed_query(text)
-        else:
-            raise ValueError("No embedding model available")
+            try:
+                # For Gemini, use output_dimensionality parameter
+                if hasattr(self.primary_model, 'model') and 'gemini' in str(self.primary_model.model):
+                    return self.primary_model.embed_query(text, output_dimensionality=768)
+                else:
+                    return self.primary_model.embed_query(text)
+            except Exception as e:
+                logger.warning(f"Primary embedding model failed: {e}. Trying fallback models...")
+                
+        # Try first fallback
+        if self.fallback_model_1:
+            try:
+                return self.fallback_model_1.embed_query(text)
+            except Exception as e:
+                logger.warning(f"First fallback embedding model failed: {e}. Trying second fallback...")
+                
+        # Try second fallback
+        if self.fallback_model_2:
+            try:
+                return self.fallback_model_2.embed_query(text)
+            except Exception as e:
+                logger.error(f"Second fallback embedding model failed: {e}")
+                
+        raise ValueError("All embedding models failed")
 
 class ChromaManager:
     def __init__(self):

@@ -160,11 +160,16 @@ REDIS_URL=redis://localhost:6379/0
 
 #### Database Setup
 ```bash
+# Navigate to backend directory
+cd backend
+source .venv/Scripts/activate  # Windows
+# source .venv/bin/activate    # macOS/Linux
+
 # Initialize the database
 python init_db.py
 
 # Load sample data (optional)
-python load_sample_data.py
+python tests/load_sample_data.py
 ```
 
 ### 3. Frontend Setup
@@ -290,24 +295,28 @@ RAG-Student-sense/
 ├── backend/
 │   ├── routers/           # FastAPI route handlers
 │   ├── celery_tasks/      # Background task definitions
-│   ├── tests/            # Backend tests
+│   ├── tests/            # Backend tests and utilities
 │   ├── uploads/          # File upload directory
-│   ├── logs/             # Application logs
-│   ├── chroma_db/        # ChromaDB storage
+│   ├── static/           # Static files
 │   ├── main.py           # FastAPI application entry point
 │   ├── database.py       # Database models and configuration
 │   ├── llm_integration.py # LLM and RAG implementation
 │   ├── vector_store.py   # ChromaDB integration
+│   ├── celery_worker.py  # Celery worker configuration
+│   ├── init_db.py        # Database initialization
+│   ├── run.py            # Application runner
 │   └── requirements.txt  # Python dependencies
 ├── frontend/
 │   ├── src/
 │   │   ├── components/   # React components
 │   │   ├── pages/        # Page components
 │   │   ├── stores/       # Zustand state management
-│   │   ├── lib/          # Utility functions and API
-│   │   └── App.tsx       # Main React application
-│   ├── public/           # Static assets
-│   └── package.json      # Node.js dependencies
+│   │   ├── assets/       # Static assets
+│   │   ├── App.tsx       # Main React application
+│   │   └── main.tsx      # Application entry point
+│   ├── index.html        # HTML template
+│   ├── package.json      # Node.js dependencies
+│   └── vite.config.ts    # Vite configuration
 ├── sample_data_10/       # Sample data files
 └── README.md            # This file
 ```

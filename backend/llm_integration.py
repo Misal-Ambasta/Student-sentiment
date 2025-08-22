@@ -1,5 +1,6 @@
 import os
 import enum
+import json
 from typing import Dict, List, Any, Optional, Union, Callable
 from loguru import logger
 from langchain.prompts import PromptTemplate
@@ -10,6 +11,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
+from confidence_calculator import get_confidence_calculator
 
 class LLMProvider(enum.Enum):
     GEMINI = "gemini"
@@ -150,14 +152,20 @@ class MultiLLMManager:
             Question: {question}
             
             Return ONLY a valid JSON object in this exact format:
-            {{
+            {
               "type": "individual_analysis",
               "content": "👤 STUDENT PROFILE: [student_id]\nDemographic: [demographic] | Grade: [grade] | Attendance: [attendance]%\n\nJourney Overview:\n• Overall NPS: [score]/10 → '[comment]'\n• Course A Performance: [analysis]\n• Course B Performance: [analysis]\n• CSBT Readiness: [analysis]\n• Support Systems: [analysis]\n\n📊 DETAILED ASPECT BREAKDOWN:\nCourse A: [detailed scores]\nCourse B: [detailed scores]\nCSBT: [detailed scores]\nSupport: [detailed scores]\n\n🧠 HISTORICAL COMPARISON:\nFound [number] similar [demographic] patterns:\n• [success rate]% successfully complete program\n• [placement rate]% achieve job placement within 3 months\n• Typical challenge: [challenge]\n• Risk Level: [level] ([dropout probability]% dropout probability)\n\n💡 RECOMMENDED ACTIONS:\n• [action 1]\n• [action 2]\n• [action 3]\n• [action 4]",
               "student_id": "[extracted_student_id]",
               "risk_level": "[very_low|low|medium|high|very_high]",
-              "aspect_scores": {{}},
-              "recommended_actions": []
-            }}
+              "aspect_scores": {},
+              "recommended_actions": [],
+              "metadata": {
+                "confidence_score": "{confidence_score}",
+                "data_sources": ["student_survey", "historical_patterns", "demographic_analysis"],
+                "analysis_depth": "comprehensive",
+                "generated_at": "[timestamp]"
+              }
+            }
             """
             
             self.rag_templates["individual_analysis"] = PromptTemplate(
@@ -173,17 +181,17 @@ class MultiLLMManager:
             Question: {question}
             
             Return ONLY a valid JSON object in this exact format:
-            {{
+            {
               "type": "weekly_report",
               "content": "📊 NPS Intelligence Report - Week Ending [Date]\n════════════════════════════════════════════\n📈 OVERALL METRICS\nCurrent NPS: [score] (↓[change] from last week) ⚠\nPromoters: [%]% | Passives: [%]% | Detractors: [%]%\nResponse Rate: [%]%\nData Richness: 20+ aspects analyzed per student\n\n🧠 INSIGHTS FROM PAST COHORTS\nThis Week [number] dip happened in [%]% of previous batches\n• Course A→B transition challenges: [%]% of students affected\n• CSBT readiness concerns: [%]% mention career preparation anxiety\n• Teams that acted now: [%]% recovered\n• Teams that waited: Only [%]% recovered\n• What worked best: [interventions]\n\n📚 ASPECT-SPECIFIC ANALYSIS\nCourse A Performance:\n• Lecture Experience: [score]/10 (↑[change])\n• Instructor Delivery: [score]/10 (stable)\n• Sherpa Support: [score]/10 (↓[change]) ⚠\n\nCourse B Performance:\n• Lecture Experience: [score]/10 (↓[change]) ⚠\n• Content Complexity Jump: [%]% mention difficulty\n• Historical Pattern: Normal Week [range] challenge\n\nCSBT Readiness:\n• Curriculum Design: [score]/10 (↑[change])\n• Career Preparation Anxiety: [%]% express concerns\n• Job Market Readiness: [%]% feel underprepared\n\n...[continue with full analysis]",
-              "metadata": {{
-                "confidence_score": 0.92,
+              "metadata": {
+                "confidence_score": "{confidence_score}",
                 "data_sources": ["comprehensive_survey", "historical_cohorts", "aspect_analysis"],
                 "aspects_analyzed": 20,
                 "response_richness": "high",
                 "generated_at": "[timestamp]"
-              }}
-            }}
+              }
+            }
             """
             
             self.rag_templates["weekly_report"] = PromptTemplate(
@@ -206,11 +214,17 @@ class MultiLLMManager:
             If any course section has no data or all values are empty/null, display "N/A" for that course average.
             
             Return ONLY a valid JSON object in this exact format:
-            {{
+            {
               "type": "segmentation_analysis",
               "content": "📊 COMPREHENSIVE DEMOGRAPHIC ANALYSIS\n\nWorking Professionals (n=[count] in sample)\n• Average Overall NPS: [score]\n• Course A Average: [score]/5 ([description])\n• Course B Average: [score]/5 ([description])\n• CSBT Average: [score]/5 ([description])\n• Main Challenge: [challenge] (mentioned in [%]% of feedback)\n• Support Needs: [needs]\n• Historical Success Rate: [%]% with targeted interventions\n\nFresh Graduates (n=[count] in sample)\n• Average Overall NPS: [score] ([description])\n• Course A Average: [score]/5 ([description])\n• Course B Average: [score]/5 ([description])\n• CSBT Average: [score]/5 ([description])\n• Strength: [strengths]\n• Challenge: [challenges]\n• Historical Success Rate: [%]% completion, [%]% placement\n\nCareer Switchers (n=[count] in sample)\n• Average Overall NPS: [score]\n• Course A Average: [score]/5 ([description])\n• Course B Average: [score]/5 ([description])\n• CSBT Average: [score]/5 ([description])\n• Main Need: [needs]\n• Support Focus: [focus]\n• Historical Success Rate: [%]% with mentorship support\n\n🎯 TARGETED RECOMMENDATIONS:\nWorking Professionals: [recommendations]\nFresh Graduates: [recommendations]\nCareer Switchers: [recommendations]",
-              "segments": {{}}
-            }}
+              "segments": {},
+              "metadata": {
+                "confidence_score": "{confidence_score}",
+                "data_sources": ["demographic_survey", "segmentation_analysis", "historical_cohorts"],
+                "segments_analyzed": 3,
+                "generated_at": "[timestamp]"
+              }
+            }
             """
             
             self.rag_templates["segmentation_analysis"] = PromptTemplate(
@@ -288,6 +302,21 @@ class MultiLLMManager:
             # Format documents into context string
             context = "\n\n".join([doc.page_content for doc in documents])
             
+            # Calculate confidence score for templates that need it
+            template_str = template.template
+            if "{confidence_score}" in template_str:
+                confidence_calc = get_confidence_calculator()
+                confidence_score = confidence_calc.calculate_confidence(
+                    documents=documents,
+                    question=question,
+                    analysis_type=template_type
+                )
+                template_str = template_str.replace("{confidence_score}", str(confidence_score))
+                template = PromptTemplate(
+                    template=template_str,
+                    input_variables=template.input_variables
+                )
+            
             # Create RAG chain
             chain = (
                 {"context": lambda _: context, "question": RunnablePassthrough()}
@@ -302,9 +331,63 @@ class MultiLLMManager:
                 async for chunk in chain.astream(question):
                     response += chunk
                     streaming_callback(chunk)
+                
+                # Parse JSON response for structured analysis types
+                if template_type in ["individual_analysis", "segmentation_analysis", "weekly_report", "aspect_analysis"]:
+                    try:
+                        # Find JSON in the response
+                        start_idx = response.find('{')
+                        end_idx = response.rfind('}') + 1
+                        
+                        if start_idx != -1 and end_idx > start_idx:
+                            json_str = response[start_idx:end_idx]
+                            parsed_response = json.loads(json_str)
+                            
+                            # Ensure confidence score is properly set for templates that need it
+                            if "{confidence_score}" in template_str and "metadata" in parsed_response:
+                                parsed_response["metadata"]["confidence_score"] = confidence_score
+                            
+                            return json.dumps(parsed_response)
+                        else:
+                            logger.warning(f"No valid JSON found in {template_type} response")
+                            return response
+                            
+                    except json.JSONDecodeError as e:
+                        logger.error(f"JSON parsing error for {template_type}: {e}")
+                        return response
+                
                 return response
             else:
-                return await chain.ainvoke(question)
+                response = await chain.ainvoke(question)
+                
+                # Parse JSON response for structured analysis types
+                if template_type in ["individual_analysis", "segmentation_analysis", "weekly_report", "aspect_analysis"]:
+                    try:
+                        # Clean the response to extract JSON
+                        response_text = response.get("result", response) if isinstance(response, dict) else str(response)
+                        
+                        # Find JSON in the response
+                        start_idx = response_text.find('{')
+                        end_idx = response_text.rfind('}') + 1
+                        
+                        if start_idx != -1 and end_idx > start_idx:
+                            json_str = response_text[start_idx:end_idx]
+                            parsed_response = json.loads(json_str)
+                            
+                            # Ensure confidence score is properly set for templates that need it
+                            if "{confidence_score}" in template_str and "metadata" in parsed_response:
+                                parsed_response["metadata"]["confidence_score"] = confidence_score
+                            
+                            return json.dumps(parsed_response)
+                        else:
+                            logger.warning(f"No valid JSON found in {template_type} response")
+                            return response_text
+                            
+                    except json.JSONDecodeError as e:
+                        logger.error(f"JSON parsing error for {template_type}: {e}")
+                        return str(response)
+                
+                return response
         except Exception as e:
             logger.error(f"Error generating RAG response: {e}")
             raise

@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import json
 import uuid
+import asyncio
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from loguru import logger
@@ -279,11 +280,39 @@ def map_headers_with_llm(df: pd.DataFrame) -> Dict[str, str]:
         For derived fields like course_id, use "DERIVED" as the value.
         """
         
-        # Generate mapping
-        mapping_text = llm_manager.generate_response(
-            prompt=prompt,
-            preferred_provider=LLMProvider.GROQ  # Use Groq for mapping (fast)
-        )
+        # Generate mapping using asyncio event loop handling
+        try:
+            # Try to get existing event loop
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, create a new thread to run the async function
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run,
+                        llm_manager.generate_response(
+                            prompt=prompt,
+                            preferred_provider=LLMProvider.GROQ
+                        )
+                    )
+                    mapping_text = future.result()
+            else:
+                # If no loop is running, use asyncio.run
+                mapping_text = asyncio.run(llm_manager.generate_response(
+                    prompt=prompt,
+                    preferred_provider=LLMProvider.GROQ
+                ))
+        except RuntimeError:
+            # Fallback: create new event loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                mapping_text = loop.run_until_complete(llm_manager.generate_response(
+                    prompt=prompt,
+                    preferred_provider=LLMProvider.GROQ
+                ))
+            finally:
+                loop.close()
         
         # Parse mapping
         mapping = json.loads(mapping_text)
