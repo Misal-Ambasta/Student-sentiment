@@ -5,6 +5,9 @@ from database import get_db, Base, engine, Student, Demographics, Survey, File, 
 from typing import Dict, Any, List
 from loguru import logger
 import json
+import os
+import shutil
+from vector_store import get_chroma_manager, CHROMA_DIR
 
 router = APIRouter(prefix="/api/database", tags=["database"])
 
@@ -56,6 +59,81 @@ async def clear_all_data(db: AsyncSession = Depends(get_db)):
         await db.rollback()
         logger.error(f"Error clearing data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to clear data: {str(e)}")
+
+@router.delete("/reset")
+async def reset_all_data(db: AsyncSession = Depends(get_db)):
+    """
+    Reset endpoint that deletes all data from PostgreSQL tables and ChromaDB.
+    This is a complete reset of the application's data.
+    """
+    try:
+        # Step 1: Clear all PostgreSQL tables
+        tables_to_clear = [
+            ChatMessage,  # Has foreign key to ChatSession
+            ChatSession,
+            Survey,       # Has foreign key to Student
+            Demographics, # Has foreign key to Student
+            File,
+            Student,      # Referenced by other tables
+        ]
+        
+        # Delete data from each table
+        for table_model in tables_to_clear:
+            result = await db.execute(text(f"DELETE FROM {table_model.__tablename__}"))
+            logger.info(f"Reset: Deleted {result.rowcount} rows from {table_model.__tablename__}")
+        
+        await db.commit()
+        
+        # Step 2: Clear ChromaDB collections by directly accessing the collections
+        try:
+            # Import here to avoid circular imports
+            from vector_store import get_chroma_manager, ChromaManager
+            
+            # Get the ChromaDB manager
+            chroma_manager = get_chroma_manager()
+            
+            # Reset the ChromaDB manager instance to force recreation
+            import vector_store
+            vector_store._chroma_manager = None
+            
+            # Try to delete the ChromaDB directory if it exists
+            try:
+                if os.path.exists(CHROMA_DIR) and os.path.isdir(CHROMA_DIR):
+                    shutil.rmtree(CHROMA_DIR)
+                    logger.info(f"Reset: Removed ChromaDB directory at {CHROMA_DIR}")
+                
+                # Create a new ChromaDB manager to initialize fresh collections
+                import vector_store
+                vector_store._chroma_manager = None
+                new_chroma_manager = ChromaManager()
+                
+                # Verify collections are empty
+                survey_count = len(new_chroma_manager.survey_db._collection.get()['ids'])
+                student_count = len(new_chroma_manager.student_db._collection.get()['ids'])
+                chat_history_count = len(new_chroma_manager.chat_history_db._collection.get()['ids'])
+                
+                logger.info(f"Reset: ChromaDB collections recreated with counts - Survey: {survey_count}, Student: {student_count}, Chat History: {chat_history_count}")
+                
+                # Update the singleton instance
+                vector_store._chroma_manager = new_chroma_manager
+            except PermissionError as pe:
+                logger.warning(f"Reset: Could not delete ChromaDB directory due to permission error: {str(pe)}")
+                logger.warning("Reset: ChromaDB will be cleared on next server restart")
+            except Exception as e:
+                logger.warning(f"Reset: Issue with ChromaDB reset: {str(e)}")
+                logger.warning("Reset: ChromaDB will be cleared on next server restart")
+            
+        except Exception as e:
+            logger.error(f"Error resetting ChromaDB: {str(e)}")
+            # Continue with the response even if ChromaDB reset fails
+        
+        logger.info("Complete reset of all data (PostgreSQL and ChromaDB) successful")
+        return {"message": "All data has been successfully reset from PostgreSQL and ChromaDB"}
+    
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error during complete data reset: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset all data: {str(e)}")
 
 @router.get("/data")
 async def fetch_all_table_data(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:

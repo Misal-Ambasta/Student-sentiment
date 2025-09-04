@@ -2,7 +2,7 @@ import os
 import uuid
 from typing import List, Dict, Any, Optional
 from loguru import logger
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain.schema import Document
 from langchain.embeddings.base import Embeddings
 from dotenv import load_dotenv
