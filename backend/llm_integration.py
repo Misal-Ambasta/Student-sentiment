@@ -53,9 +53,9 @@ class MultiLLMManager:
             # Initialize Groq model
             if self.groq_api_key:
                 self.llm_models[LLMProvider.GROQ] = ChatGroq(
-                    model="llama3-70b-8192",
+                    model="openai/gpt-oss-120b",
                     api_key=self.groq_api_key,
-                    temperature=0.7,
+                    temperature=0.4,
                     top_p=0.95,
                     max_tokens=2048,
                     streaming=True
@@ -151,19 +151,29 @@ class MultiLLMManager:
             Context: {context}
             Question: {question}
             
-            IMPORTANT: When analyzing course performance, use the detailed JSONB course scores if available:
-            - Course A detailed scores: lecture_experience, instructor_delivery, sherpa_support, ask_learn_effectiveness, pp_session
-            - Course B detailed scores: lecture_experience, instructor_delivery, sherpa_support, ask_learn_effectiveness, pp_session  
-            - CSBT detailed scores: curriculum_design, instructor_support, general_support
-            - Support scores: dost_support, lms_platform, assess_platform, ticketing_system, psc_sessions, pai_evaluation
+            CRITICAL INSTRUCTIONS FOR DATA EXTRACTION:
+            1. DEMOGRAPHIC DATA: Extract from context documents that contain "Demographic Type:", "Current Grade:", "Attendance Rate:"
+               - Look for patterns like "Demographic Type: Working Professional" or "Fresh Graduate" or "Career Switcher"
+               - Look for "Current Grade: [number]" to get the grade
+               - Look for "Attendance Rate: [number]" to get attendance percentage
+               - NEVER use "Unknown" if this data exists in the context
             
-            If detailed scores are available, calculate averages and show specific aspect breakdowns.
-            If only simplified aspect_1_score, aspect_2_score, aspect_3_score are available, use those with appropriate labels.
+            2. COURSE PERFORMANCE: Use detailed JSONB course scores when available:
+               - Course A detailed scores: lecture_experience, instructor_delivery, sherpa_support, ask_learn_effectiveness, pp_session
+               - Course B detailed scores: lecture_experience, instructor_delivery, sherpa_support, ask_learn_effectiveness, pp_session  
+               - CSBT detailed scores: curriculum_design, instructor_support, general_support
+               - Calculate averages from these detailed scores: (score1 + score2 + score3 + score4 + score5) / 5
+               - If detailed scores unavailable, use aspect_1_score, aspect_2_score, aspect_3_score from the data
+            
+            3. DETAILED ASPECT BREAKDOWN:
+               - Only show 3 aspects per course/system as specified in enhanced_rag_implementation.md
+               - Use actual calculated scores from the data, NOT equal scores (avoid showing 5, 5, 5)
+               - Ensure Course B and CSBT show actual data, not "No data" or "N/A"
             
             Return ONLY a valid JSON object in this exact format:
             {{
               "type": "individual_analysis",
-              "content": "👤 STUDENT PROFILE: [student_id]\nDemographic: [demographic] | Grade: [grade] | Attendance: [attendance]%\n\nJourney Overview:\n• Overall NPS: [score]/10 → '[comment]'\n• Course A Performance: [analysis with detailed breakdown if available]\n• Course B Performance: [analysis with detailed breakdown if available]\n• CSBT Readiness: [analysis with detailed breakdown if available]\n• Support Systems: [analysis with detailed breakdown if available]\n\n📊 DETAILED ASPECT BREAKDOWN:\nCourse A: Aspect 1: [score], Aspect 2: [score], Aspect 3: [score], Aspect 4: [score], Aspect 5: [score]\nCourse B: Aspect 1: [score], Aspect 2: [score], Aspect 3: [score], Aspect 4: [score], Aspect 5: [score]\nCSBT: Aspect 1: [score], Aspect 2: [score], Aspect 3: [score]\nSupport: [detailed support scores if available]\n\n🧠 HISTORICAL COMPARISON:\nFound [number] similar [demographic] patterns:\n• [success rate]% successfully complete program\n• [placement rate]% achieve job placement within 3 months\n• Typical challenge: [challenge]\n• Risk Level: [level] ([dropout probability]% dropout probability)\n\n💡 RECOMMENDED ACTIONS:\n• [action 1]\n• [action 2]\n• [action 3]\n• [action 4]",
+              "content": "👤 STUDENT PROFILE: [student_id]\nDemographic: [demographic_type] | Grade: [current_grade] | Attendance: [attendance_rate]%\n\nJourney Overview:\n• Overall NPS: [score]/10 → '[comment]'\n• Course A Performance: Average [course_a_average]/5 (from detailed scores)\n• Course B Performance: Average [course_b_average]/5 (from detailed scores)\n• CSBT Readiness: Average [csbt_average]/5 (from detailed scores)\n• Support Systems: [support_analysis]\n\n📊 DETAILED ASPECT BREAKDOWN:\nCourse A: [aspect_1_name]: [score], [aspect_2_name]: [score], [aspect_3_name]: [score]\nCourse B: [aspect_1_name]: [score], [aspect_2_name]: [score], [aspect_3_name]: [score]\nCSBT: [aspect_1_name]: [score], [aspect_2_name]: [score], [aspect_3_name]: [score]\n\n🧠 HISTORICAL COMPARISON:\nFound [number] similar [demographic] patterns:\n• [success rate]% successfully complete program\n• [placement rate]% achieve job placement within 3 months\n• Typical challenge: [challenge]\n• Risk Level: [level] ([dropout probability]% dropout probability)\n\n💡 RECOMMENDED ACTIONS:\n• [action 1]\n• [action 2]\n• [action 3]\n• [action 4]",
               "student_id": "[extracted_student_id]",
               "risk_level": "[very_low|low|medium|high|very_high]",
               "aspect_scores": {{}},

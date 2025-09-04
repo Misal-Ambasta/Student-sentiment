@@ -552,7 +552,7 @@ def save_survey_data(data: List[Dict[str, Any]]):
         raise
 
 def save_demographics_data(data: List[Dict[str, Any]]):
-    """Save demographics data to database"""
+    """Save demographics data to database with upsert logic"""
     try:
         # Get database session
         db = get_sync_db()
@@ -574,25 +574,47 @@ def save_demographics_data(data: List[Dict[str, Any]]):
                     "updated_at": datetime.utcnow()
                 })
             
-            # Insert demographics
-            insert_demographics = text(
-                "INSERT INTO demographics "
-                "(student_id, demographic_type, current_grade, attendance_rate, created_at, updated_at) "
-                "VALUES "
-                "(:student_id, :demographic_type, :current_grade, :attendance_rate, :created_at, :updated_at)"
-            )
-            db.execute(insert_demographics, {
-                "student_id": item['student_id'],
-                "demographic_type": item['demographic_type'],
-                "current_grade": item['current_grade'],
-                "attendance_rate": item['attendance_rate'],
-                "created_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
-            })
+            # Check if demographics already exists for this student
+            demographics_query = text("SELECT id FROM demographics WHERE student_id = :student_id")
+            existing_demo = db.execute(demographics_query, {"student_id": item['student_id']}).fetchone()
+            
+            if existing_demo:
+                # Update existing demographics
+                update_demographics = text(
+                    "UPDATE demographics SET "
+                    "demographic_type = :demographic_type, "
+                    "current_grade = :current_grade, "
+                    "attendance_rate = :attendance_rate, "
+                    "updated_at = :updated_at "
+                    "WHERE student_id = :student_id"
+                )
+                db.execute(update_demographics, {
+                    "student_id": item['student_id'],
+                    "demographic_type": item['demographic_type'],
+                    "current_grade": item['current_grade'],
+                    "attendance_rate": item['attendance_rate'],
+                    "updated_at": datetime.utcnow()
+                })
+            else:
+                # Insert new demographics
+                insert_demographics = text(
+                    "INSERT INTO demographics "
+                    "(student_id, demographic_type, current_grade, attendance_rate, created_at, updated_at) "
+                    "VALUES "
+                    "(:student_id, :demographic_type, :current_grade, :attendance_rate, :created_at, :updated_at)"
+                )
+                db.execute(insert_demographics, {
+                    "student_id": item['student_id'],
+                    "demographic_type": item['demographic_type'],
+                    "current_grade": item['current_grade'],
+                    "attendance_rate": item['attendance_rate'],
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
+                })
         
         db.commit()
         db.close()
-        logger.info(f"Saved {len(data)} demographics records to database")
+        logger.info(f"Saved {len(data)} demographics records to database (with upsert logic)")
     except Exception as e:
         logger.error(f"Error saving demographics data: {e}")
         raise

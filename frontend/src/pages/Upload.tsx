@@ -437,25 +437,7 @@ const Upload: React.FC = () => {
       </div>
       
       {/* File Type Selection */}
-      <div className="flex items-center space-x-4 mb-4">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">File Type:</div>
-        <div className="flex items-center space-x-2">
-          <Button 
-            variant={fileType === 'survey' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFileType('survey')}
-          >
-            Survey Data
-          </Button>
-          <Button 
-            variant={fileType === 'demographics' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFileType('demographics')}
-          >
-            Demographics Data
-          </Button>
-        </div>
-      </div>
+    
 
       {/* Upload Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -509,14 +491,7 @@ const Upload: React.FC = () => {
             uploading && "opacity-50 cursor-not-allowed"
           )}
         >
-          <input {...getInputProps()} />
           <UploadIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            {isDragActive ? "Drop files here" : "Upload your data files"}
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Drag and drop your CSV or Excel files here, or click to browse
-          </p>
           <div className="flex items-center justify-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
             <span>Supported formats: CSV, XLS, XLSX</span>
             <span>•</span>

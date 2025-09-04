@@ -187,6 +187,37 @@ class ChromaManager:
                 content += f"Aspect 3 Score: {item.get('aspect_3_score', 'Unknown')}\n"
                 content += f"Comments: {item.get('comments', '')}\n"
                 
+                # Add detailed JSONB course scores if available
+                course_a_scores = item.get('course_a_scores', {})
+                if course_a_scores and isinstance(course_a_scores, dict):
+                    content += f"\nCourse A Detailed Scores:\n"
+                    for aspect, score in course_a_scores.items():
+                        content += f"  {aspect}: {score}\n"
+                
+                course_b_scores = item.get('course_b_scores', {})
+                if course_b_scores and isinstance(course_b_scores, dict):
+                    content += f"\nCourse B Detailed Scores:\n"
+                    for aspect, score in course_b_scores.items():
+                        content += f"  {aspect}: {score}\n"
+                
+                csbt_scores = item.get('csbt_scores', {})
+                if csbt_scores and isinstance(csbt_scores, dict):
+                    content += f"\nCSBT Detailed Scores:\n"
+                    for aspect, score in csbt_scores.items():
+                        content += f"  {aspect}: {score}\n"
+                
+                dost_support_scores = item.get('dost_support_scores', {})
+                if dost_support_scores and isinstance(dost_support_scores, dict):
+                    content += f"\nDost Support Scores:\n"
+                    for aspect, score in dost_support_scores.items():
+                        content += f"  {aspect}: {score}\n"
+                
+                product_support_scores = item.get('product_support_scores', {})
+                if product_support_scores and isinstance(product_support_scores, dict):
+                    content += f"\nProduct Support Scores:\n"
+                    for aspect, score in product_support_scores.items():
+                        content += f"  {aspect}: {score}\n"
+                
                 # Create metadata
                 metadata = {
                     "student_id": item.get("student_id", ""),
