@@ -31,6 +31,7 @@ import { useChatStore } from '../stores/useChatStore';
 import { useAppStore } from '../stores/useAppStore';
 import { getQuerySuggestions, sendChatMessage, classifyQuery } from '../lib/api';
 import { formatChatTime, cn, formatDate } from '../lib/utils';
+import { formatAspectName } from '../utils/formatters';
 import toast from 'react-hot-toast';
 
 const Chat: React.FC = () => {
@@ -257,6 +258,32 @@ const Chat: React.FC = () => {
                   </li>
                 ))}
               </ul>
+            </div>
+          );
+        } else if (section.includes('DETAILED ASPECT BREAKDOWN')) {
+          // Format aspect names in the DETAILED ASPECT BREAKDOWN section
+          const lines = section.split('\n');
+          const title = lines[0];
+          const aspectLines = lines.slice(1);
+          
+          return (
+            <div key={index} className="mb-4">
+              <h4 className="font-medium text-gray-900 dark:text-white mb-2">{title}</h4>
+              <div className="space-y-1">
+                {aspectLines.map((line, i) => {
+                  // Replace aspect names with formatted versions
+                  const formattedLine = line.replace(/([a-z_]+):/g, (match) => {
+                    const aspectName = match.slice(0, -1); // Remove the colon
+                    return formatAspectName(aspectName) + ':';
+                  });
+                  
+                  return (
+                    <p key={i} className="text-sm text-gray-700 dark:text-gray-300">
+                      {formattedLine}
+                    </p>
+                  );
+                })}
+              </div>
             </div>
           );
         } else {
