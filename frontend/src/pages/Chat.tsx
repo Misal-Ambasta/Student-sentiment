@@ -109,14 +109,25 @@ const Chat: React.FC = () => {
       const classification = await classifyQuery(userMessage);
       setCurrentClassification(classification);
 
+      // Extract student_id for individual analysis
+      let studentId: string | undefined;
+      if (classification.query_type === 'individual_analysis') {
+        // Extract student ID from queries like "Analyze student fsd25_08010" or "student fsd25_08010"
+        const studentIdMatch = userMessage.match(/student\s+([a-zA-Z0-9_]+)/i);
+        if (studentIdMatch) {
+          studentId = studentIdMatch[1];
+        }
+      }
+
       // Send message to API
       const response = await sendChatMessage({
         query: userMessage,
         session_id: currentSession?.id,
         response_format: classification.query_type,
-        auto_classify: "false"
+        auto_classify: "false",
+        ...(studentId && { student_id: studentId })
       });
-
+      console.log('API Response:', response);
       // Add assistant response
       const assistantMsg = {
         content: typeof response.response === 'string' ? response.response : JSON.stringify(response.response, null, 2),
@@ -240,6 +251,51 @@ const Chat: React.FC = () => {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {section.replace(/[═📊📈🧠📚]/g, '').trim()}
               </h3>
+            </div>
+          );
+        } else if (section.includes('STUDENT PROFILE')) {
+          // Student Profile section with demographic data
+          const lines = section.split('\n');
+          const profileLine = lines[0]; // Contains the student ID
+          const demographicLine = lines.length > 1 ? lines[1] : ''; // Contains demographic, grade, attendance
+          
+          // Extract student ID from the profile line
+          const studentId = profileLine.includes(':') ? 
+            profileLine.split(':')[1].trim() : 
+            profileLine.replace('STUDENT PROFILE', '').replace('👤', '').trim();
+          
+          // Extract demographic data if available
+          let demographic = '', grade = '', attendance = '';
+          if (demographicLine) {
+            const parts = demographicLine.split('|').map(part => part.trim());
+            if (parts.length >= 1) demographic = parts[0].replace('Demographic:', '').trim();
+            if (parts.length >= 2) grade = parts[1].replace('Grade:', '').trim();
+            if (parts.length >= 3) attendance = parts[2].replace('Attendance:', '').trim();
+          }
+          
+          return (
+            <div key={index} className="mb-4 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <h4 className="font-medium text-gray-900 dark:text-white">Student Profile: <span className="font-bold">{studentId}</span></h4>
+              </div>
+              
+              {demographicLine && (
+                <div className="grid grid-cols-3 gap-3 mt-2">
+                  <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Demographic</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{demographic || 'Unknown'}</p>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Grade</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{grade || 'Unknown'}</p>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Attendance</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{attendance || 'Unknown'}</p>
+                  </div>
+                </div>
+              )}
             </div>
           );
         } else if (section.includes('•')) {
@@ -826,7 +882,7 @@ const Chat: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleSuggestionClick("Analyze student performance trends")}
+                      onClick={() => handleSuggestionClick("Individual analysis for the student: ")}
                       className="text-xs"
                     >
                       Individual Analysis

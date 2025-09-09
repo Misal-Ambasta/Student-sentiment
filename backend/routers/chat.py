@@ -580,11 +580,15 @@ async def process_query(
         
         student_docs = []
         if student_id:
-            student_docs = await chroma_manager.search_student_data(
-                query=query,
+            # For individual analysis, first get demographic data
+            demographic_docs = await chroma_manager.search_student_data(
+                query="demographic_type",
                 filter_metadata={"student_id": student_id},
                 k=3
             )
+            
+            # Filter for demographic documents only
+            student_docs = [doc for doc in demographic_docs if doc.metadata.get('document_type') == 'demographics']
         elif response_format == "segmentation_analysis":
             # For segmentation analysis, get both demographic data and survey responses
             demographic_docs = await chroma_manager.search_student_data(
