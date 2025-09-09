@@ -10,7 +10,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -224,7 +223,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+
 
 # Vite build output
 dist/
@@ -263,7 +262,7 @@ Thumbs.db
 # Backend
 backend/uploads/*
 !backend/uploads/.gitkeep
-backend/chroma_db/
+
 backend/logs/
 *.db
 *.sqlite
@@ -300,7 +299,7 @@ test_*.ts
 *.bak
 *.backup
 *.old
-
+# backend/tests/*
 # ChromaDB
 chroma.sqlite3
 chroma_db/

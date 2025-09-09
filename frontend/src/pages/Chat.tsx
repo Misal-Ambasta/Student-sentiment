@@ -882,7 +882,7 @@ const Chat: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleSuggestionClick("Individual analysis for the student: ")}
+                      onClick={() => handleSuggestionClick("Analyze student ")}
                       className="text-xs"
                     >
                       Individual Analysis
