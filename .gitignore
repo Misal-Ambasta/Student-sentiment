@@ -274,7 +274,7 @@ frontend/build/
 
 # Data files
 *.csv
-*.json
+
 *.xlsx
 *.xls
 !package.json
